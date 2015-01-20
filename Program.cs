@@ -102,7 +102,7 @@ namespace GagongSyndra
             TargetSelector.AddToMenu(Menu.SubMenu("TargetSelector"));
 
             //Orbwalker
-            orbwalkerMenu.AddItem(new MenuItem("Orbwalker_Mode", "Regular Orbwalker").SetValue(false));
+            orbwalkerMenu.AddItem(new MenuItem("Orbwalker_Mode", "Regular Orbwalker").SetValue(true));
             Menu.AddSubMenu(orbwalkerMenu);
             ChooseOrbwalker(Menu.Item("Orbwalker_Mode").GetValue<bool>()); //uncomment this line
 
