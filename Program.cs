@@ -102,7 +102,7 @@ namespace GagongSyndra
             TargetSelector.AddToMenu(Menu.SubMenu("TargetSelector"));
 
             //Orbwalker
-            orbwalkerMenu.AddItem(new MenuItem("Orbwalker_Mode", "Regular Orbwalker").SetValue(true));
+            orbwalkerMenu.AddItem(new MenuItem("Orbwalker_Mode", "Regular Orbwalker").SetValue(false));
             Menu.AddSubMenu(orbwalkerMenu);
             ChooseOrbwalker(Menu.Item("Orbwalker_Mode").GetValue<bool>()); //uncomment this line
 
@@ -229,7 +229,7 @@ namespace GagongSyndra
             Game.PrintChat("<font color = \"#FF00FF\">Updates by RaZer</font>");
         }
 
-        private static void ChooseOrbwalker(bool mode)
+               private static void ChooseOrbwalker(bool mode)
         {
             if (mode)
             {
@@ -240,8 +240,17 @@ namespace GagongSyndra
                 lanefreezeKey = Menu.Item("LaneClear");
                 Game.PrintChat("Regular Orbwalker Loaded");
             }
+            else
+            {
+                xSLxOrbwalker.AddToMenu(orbwalkerMenu);
+                comboKey = Menu.Item("Combo_Key");
+                harassKey = Menu.Item("Harass_Key");
+                laneclearKey = Menu.Item("LaneClear_Key");
+                lanefreezeKey = Menu.Item("LaneFreeze_Key");
+                Game.PrintChat("xSLx Orbwalker Loaded");
+            }
         }
-         
+        
         private static void OnCreate(GameObject obj, EventArgs args)
         {
             if (Player.Distance(obj.Position) > 1500 || !ObjectManager.Get<Obj_AI_Hero>().Any(h => h.ChampionName == "Yasuo" && h.IsEnemy && h.IsVisible && !h.IsDead)) return;
