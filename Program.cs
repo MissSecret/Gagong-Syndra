@@ -448,7 +448,7 @@ namespace GagongSyndra
                                                                        minion.Health < 0.75 * Player.GetSpellDamage(minion, SpellSlot.Q)))
                         Q.Cast(minion, Menu.Item("Packets").GetValue<bool>());
  // will work with this soon        
-            /*if (!useW || !W.IsReady() || allMinionsW.Count <= 3 || !laneClear)
+            if (!useW || !W.IsReady() || allMinionsW.Count <= 3 || !laneClear)
                 return;
             if (Player.Spellbook.GetSpell(SpellSlot.W).ToggleState == 1)
             {
@@ -463,15 +463,15 @@ namespace GagongSyndra
             {
                 var fl1 = Q.GetCircularFarmLocation(rangedMinionsW, W.Width);
                 var fl2 = Q.GetCircularFarmLocation(allMinionsW, W.Width);
-                if (fl1.MinionsHit >= 3 && W.InRange(fl1.Position.To3D()))
+                if (fl1.MinionsHit >= 3 && W.IsInRange(fl1.Position.To3D()))
                 {
                     W.Cast(fl1.Position, Menu.Item("Packets").GetValue<bool>());
                 }
-                else if (fl2.MinionsHit >= 1 && W.InRange(fl2.Position.To3D()) && fl1.MinionsHit <= 2)
+                else if (fl2.MinionsHit >= 1 && W.IsInRange(fl2.Position.To3D()) && fl1.MinionsHit <= 2)
                 {
                     W.Cast(fl2.Position, Menu.Item("Packets").GetValue<bool>());
                 }
-            } */
+            } 
         }
         private static void JungleFarm()
         {
