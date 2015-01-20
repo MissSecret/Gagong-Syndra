@@ -1,4 +1,4 @@
-﻿using LeagueSharp;
+﻿﻿using LeagueSharp;
 using LeagueSharp.Common;
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.Linq;
 using SharpDX;
 using Color = System.Drawing.Color;
 
-namespace GagongSyndra
+namespace DZDraven_Reloaded
 {
     // ReSharper disable once InconsistentNaming
     public class xSLxOrbwalker
@@ -17,17 +17,17 @@ namespace GagongSyndra
         private static readonly string[] Attacks = { "caitlynheadshotmissile", "frostarrow", "garenslash2", "kennenmegaproc", "lucianpassiveattack", "masteryidoublestrike", "quinnwenhanced", "renektonexecute", "renektonsuperexecute", "rengarnewpassivebuffdash", "trundleq", "xenzhaothrust", "viktorqbuff", "xenzhaothrust2", "xenzhaothrust3" };
 
 
-        private static Menu Menu;
+        public static Menu Menu;
         public static Obj_AI_Hero MyHero = ObjectManager.Player;
-        public static Obj_AI_Base ForcedTarget = null;
+        public static AttackableUnit ForcedTarget = null;
         public static IEnumerable<Obj_AI_Hero> AllEnemys = ObjectManager.Get<Obj_AI_Hero>().Where(hero => hero.IsEnemy);
         public static IEnumerable<Obj_AI_Hero> AllAllys = ObjectManager.Get<Obj_AI_Hero>().Where(hero => hero.IsAlly);
         public static bool CustomOrbwalkMode;
 
         public delegate void BeforeAttackEvenH(BeforeAttackEventArgs args);
-        public delegate void OnTargetChangeH(Obj_AI_Base oldTarget, Obj_AI_Base newTarget);
-        public delegate void AfterAttackEvenH(Obj_AI_Base unit, Obj_AI_Base target);
-        public delegate void OnAttackEvenH(Obj_AI_Base unit, Obj_AI_Base target);
+        public delegate void OnTargetChangeH(AttackableUnit oldTarget, AttackableUnit newTarget);
+        public delegate void AfterAttackEvenH(AttackableUnit unit, AttackableUnit target);
+        public delegate void OnAttackEvenH(AttackableUnit unit, AttackableUnit target);
 
         public static event BeforeAttackEvenH BeforeAttack;
         public static event OnTargetChangeH OnTargetChange;
@@ -51,7 +51,7 @@ namespace GagongSyndra
         private static bool _disableNextAttack;
         private const float LaneClearWaitTimeMod = 2f;
         private static int _lastAATick;
-        private static Obj_AI_Base _lastTarget;
+        private static AttackableUnit _lastTarget;
         private static Spell _movementPrediction;
         private static int _lastMovement;
         private static int _windup;
@@ -64,23 +64,23 @@ namespace GagongSyndra
             Menu = menu;
 
             var menuDrawing = new Menu("Drawing", "orb_Draw");
-            menuDrawing.AddItem(new MenuItem("orb_Draw_AARange", "AA Circle").SetValue(new Circle(true, Color.BlueViolet)));
-            menuDrawing.AddItem(new MenuItem("orb_Draw_AARange_Enemy", "AA Circle Enemy").SetValue(new Circle(false, Color.Pink)));
-            menuDrawing.AddItem(new MenuItem("orb_Draw_Holdzone", "Holdzone").SetValue(new Circle(false, Color.FloralWhite)));
+            menuDrawing.AddItem(new MenuItem("orb_Draw_AARange", "AA Circle").SetValue(new Circle(true, Color.FloralWhite)));
+            menuDrawing.AddItem(new MenuItem("orb_Draw_AARange_Enemy", "AA Circle Enemy").SetValue(new Circle(true, Color.Pink)));
+            menuDrawing.AddItem(new MenuItem("orb_Draw_Holdzone", "Holdzone").SetValue(new Circle(true, Color.FloralWhite)));
             menuDrawing.AddItem(new MenuItem("orb_Draw_MinionHPBar", "Minion HPBar").SetValue(new Circle(true, Color.Black)));
             menuDrawing.AddItem(new MenuItem("orb_Draw_MinionHPBar_thickness", "^ HPBar Thickness").SetValue(new Slider(1, 1, 3)));
-            menuDrawing.AddItem(new MenuItem("orb_Draw_hitbox", "Show HitBoxes").SetValue(new Circle(false, Color.FloralWhite)));
+            menuDrawing.AddItem(new MenuItem("orb_Draw_hitbox", "Show HitBoxes").SetValue(new Circle(true, Color.FloralWhite)));
             menuDrawing.AddItem(new MenuItem("orb_Draw_Lasthit", "Minion Lasthit").SetValue(new Circle(true, Color.Lime)));
             menuDrawing.AddItem(new MenuItem("orb_Draw_nearKill", "Minion nearKill").SetValue(new Circle(true, Color.Gold)));
             menu.AddSubMenu(menuDrawing);
 
             var menuMisc = new Menu("Misc", "orb_Misc");
-            menuMisc.AddItem(new MenuItem("orb_Misc_Holdzone", "Hold Position").SetValue(new Slider(50, 100, 0)));
+            menuMisc.AddItem(new MenuItem("orb_Misc_Holdzone", "Hold Position").SetValue(new Slider(50, 0, 200)));
             menuMisc.AddItem(new MenuItem("orb_Misc_Farmdelay", "Farm Delay").SetValue(new Slider(0, 200, 0)));
             menuMisc.AddItem(new MenuItem("orb_Misc_ExtraWindUp", "Extra Winduptime").SetValue(new Slider(80, 200, 0)));
-            menuMisc.AddItem(new MenuItem("orb_Misc_AutoWindUp", "Autoset Windup").SetValue(true));
+            menuMisc.AddItem(new MenuItem("orb_Misc_AutoWindUp", "Autoset Windup").SetValue(false));
             menuMisc.AddItem(new MenuItem("orb_Misc_Priority_Unit", "Priority Unit").SetValue(new StringList(new[] { "Minion", "Hero" })));
-            menuMisc.AddItem(new MenuItem("orb_Misc_Humanizer", "Humanizer Delay").SetValue(new Slider(50, 200, 15)));
+            menuMisc.AddItem(new MenuItem("orb_Misc_Humanizer", "Humanizer Delays").SetValue(new Slider(80, 50, 500)));
             menuMisc.AddItem(new MenuItem("orb_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
             menuMisc.AddItem(new MenuItem("orb_Misc_AllAttackDisabled", "Disable All Attacks").SetValue(false));
 
@@ -90,7 +90,7 @@ namespace GagongSyndra
             menuMelee.AddItem(new MenuItem("orb_Melee_Prediction", "Movement Prediction").SetValue(false));
             menu.AddSubMenu(menuMelee);
 
-            var menuModes = new Menu("Orbwalk Mode / KeyBinds", "orb_Modes");
+            var menuModes = new Menu("Orbwalk Mode", "orb_Modes");
             {
                 var modeCombo = new Menu("Combo", "orb_Modes_Combo");
                 modeCombo.AddItem(new MenuItem("Combo_Key", "Key").SetValue(new KeyBind(32, KeyBindType.Press)));
@@ -105,14 +105,14 @@ namespace GagongSyndra
                 modeHarass.AddItem(new MenuItem("Harass_Lasthit", "Lasthit Minions").SetValue(true));
                 menuModes.AddSubMenu(modeHarass);
 
-                var modeLaneClear = new Menu("LaneClear/JungleFarm", "orb_Modes_LaneClear");
+                var modeLaneClear = new Menu("LaneClear", "orb_Modes_LaneClear");
                 modeLaneClear.AddItem(new MenuItem("LaneClear_Key", "Key").SetValue(new KeyBind("V".ToCharArray()[0], KeyBindType.Press)));
                 modeLaneClear.AddItem(new MenuItem("LaneClear_move", "Movement").SetValue(true));
                 modeLaneClear.AddItem(new MenuItem("LaneClear_attack", "Attack").SetValue(true));
                 menuModes.AddSubMenu(modeLaneClear);
 
                 var modeLaneFreeze = new Menu("LaneFreeze", "orb_Modes_LaneFreeze");
-                modeLaneFreeze.AddItem(new MenuItem("LaneFreeze_Key", "Key").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Press)));
+                modeLaneFreeze.AddItem(new MenuItem("LaneFreeze_Key", "Key").SetValue(new KeyBind("Z".ToCharArray()[0], KeyBindType.Press)));
                 modeLaneFreeze.AddItem(new MenuItem("LaneFreeze_move", "Movement").SetValue(true));
                 modeLaneFreeze.AddItem(new MenuItem("LaneFreeze_attack", "Attack").SetValue(true));
                 menuModes.AddSubMenu(modeLaneFreeze);
@@ -124,7 +124,7 @@ namespace GagongSyndra
                 menuModes.AddSubMenu(modeLasthit);
 
                 var modeFlee = new Menu("Flee", "orb_Modes_Flee");
-                modeFlee.AddItem(new MenuItem("Flee_Key", "Key").SetValue(new KeyBind("G".ToCharArray()[0], KeyBindType.Press)));
+                modeFlee.AddItem(new MenuItem("Flee_Key", "Key").SetValue(new KeyBind("A".ToCharArray()[0], KeyBindType.Press)));
                 menuModes.AddSubMenu(modeFlee);
             }
             menu.AddSubMenu(menuModes);
@@ -135,11 +135,44 @@ namespace GagongSyndra
             Game.OnGameUpdate += OnUpdate;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpell;
             GameObject.OnCreate += Obj_SpellMissile_OnCreate;
+            GameObject.OnDelete += OnDelete;
         }
 
+        public static readonly List<GameObject> Soilders = new List<GameObject>();
+
+        private static void OnDelete(GameObject sender, EventArgs args)
+        {
+            //if(MyHero.Distance(sender.Position) < 500)
+            //Game.PrintChat("obj: " + sender.Name);
+
+            if (sender.Name == "Azir_Base_P_Soldier_Ring.troy")
+            {
+                //Game.PrintChat("Solider Deleted" + sender.NetworkId);
+                foreach (var minion in Soilders)
+                {
+                    if (minion.NetworkId == sender.NetworkId)
+                    {
+                        Soilders.Remove(minion);
+                        //Game.PrintChat("" + Soilders.Count);
+                    }
+                }
+            }
+
+        }
 
         private static void Obj_SpellMissile_OnCreate(GameObject sender, EventArgs args)
         {
+            //if(MyHero.Distance(sender.Position) < 500)
+            //Game.PrintChat("obj: " + sender.Name);
+
+            if (sender.Name == "Azir_Base_P_Soldier_Ring.troy")
+            {
+                //Game.PrintChat("Solider Added" + sender.NetworkId);
+                Soilders.Add(sender);
+                //Game.PrintChat("" + Soilders.Count);
+            }
+
+
             if (sender.IsMe)
             {
                 var obj = (Obj_AI_Hero)sender;
@@ -159,9 +192,9 @@ namespace GagongSyndra
 
         private static void OnUpdate(EventArgs args)
         {
-            CheckAutoWindUp();
-            if (CurrentMode == Mode.None || MenuGUI.IsChatOpen || CustomOrbwalkMode || MyHero.IsChannelingImportantSpell())
+            if (CurrentMode == Mode.None || MenuGUI.IsChatOpen || CustomOrbwalkMode || MyHero.IsChannelingImportantSpell() || MyHero.HasBuff("katarinarsound", true))
                 return;
+            CheckAutoWindUp();
             var target = GetPossibleTarget();
             Orbwalk(Game.CursorPos, target);
         }
@@ -173,7 +206,7 @@ namespace GagongSyndra
 
             if (Menu.Item("orb_Draw_AARange").GetValue<Circle>().Active)
             {
-                Utility.DrawCircle(MyHero.Position, GetAutoAttackRange(), Menu.Item("orb_Draw_AARange").GetValue<Circle>().Color);
+                Render.Circle.DrawCircle(MyHero.Position, GetAutoAttackRange(), Menu.Item("orb_Draw_AARange").GetValue<Circle>().Color);
             }
 
             if (Menu.Item("orb_Draw_AARange_Enemy").GetValue<Circle>().Active ||
@@ -182,9 +215,9 @@ namespace GagongSyndra
                 foreach (var enemy in AllEnemys.Where(enemy => enemy.IsValidTarget(1500)))
                 {
                     if (Menu.Item("orb_Draw_AARange_Enemy").GetValue<Circle>().Active)
-                        Utility.DrawCircle(enemy.Position, GetAutoAttackRange(enemy, MyHero), Menu.Item("orb_Draw_AARange_Enemy").GetValue<Circle>().Color);
+                        Render.Circle.DrawCircle(enemy.Position, GetAutoAttackRange(enemy, MyHero), Menu.Item("orb_Draw_AARange_Enemy").GetValue<Circle>().Color);
                     if (Menu.Item("orb_Draw_hitbox").GetValue<Circle>().Active)
-                        Utility.DrawCircle(enemy.Position, enemy.BoundingRadius, Menu.Item("orb_Draw_hitbox").GetValue<Circle>().Color);
+                        Render.Circle.DrawCircle(enemy.Position, enemy.BoundingRadius, Menu.Item("orb_Draw_hitbox").GetValue<Circle>().Color);
                 }
             }
 
@@ -192,14 +225,14 @@ namespace GagongSyndra
             {
                 foreach (var enemy in AllEnemys.Where(enemy => enemy.IsValidTarget(1500)))
                 {
-                    Utility.DrawCircle(enemy.Position, GetAutoAttackRange(enemy, MyHero), Menu.Item("orb_Draw_AARange_Enemy").GetValue<Circle>().Color);
+                    Render.Circle.DrawCircle(enemy.Position, GetAutoAttackRange(enemy, MyHero), Menu.Item("orb_Draw_AARange_Enemy").GetValue<Circle>().Color);
 
                 }
             }
 
             if (Menu.Item("orb_Draw_Holdzone").GetValue<Circle>().Active)
             {
-                Utility.DrawCircle(MyHero.Position, Menu.Item("orb_Misc_Holdzone").GetValue<Slider>().Value, Menu.Item("orb_Draw_Holdzone").GetValue<Circle>().Color);
+                Render.Circle.DrawCircle(MyHero.Position, Menu.Item("orb_Misc_Holdzone").GetValue<Slider>().Value, Menu.Item("orb_Draw_Holdzone").GetValue<Circle>().Color);
             }
 
             if (Menu.Item("orb_Draw_MinionHPBar").GetValue<Circle>().Active ||
@@ -211,9 +244,9 @@ namespace GagongSyndra
                 {
                     var attackToKill = Math.Ceiling(minion.MaxHealth / MyHero.GetAutoAttackDamage(minion, true));
                     var hpBarPosition = minion.HPBarPosition;
-                    var barWidth = minion.IsMelee() ? 71 : 76;
+                    var barWidth = minion.IsMelee() ? 75 : 80;
                     if (minion.HasBuff("turretshield", true))
-                        barWidth = 67;
+                        barWidth = 70;
                     var barDistance = (float)(barWidth / attackToKill);
                     if (Menu.Item("orb_Draw_MinionHPBar").GetValue<Circle>().Active)
                     {
@@ -221,7 +254,7 @@ namespace GagongSyndra
                         {
                             var startposition = hpBarPosition.X + 45 + barDistance * i;
                             Drawing.DrawLine(
-                                new Vector2(startposition, hpBarPosition.Y + 19),
+                                new Vector2(startposition, hpBarPosition.Y + 18),
                                 new Vector2(startposition, hpBarPosition.Y + 23),
                                 Menu.Item("orb_Draw_MinionHPBar_thickness").GetValue<Slider>().Value,
                                 Menu.Item("orb_Draw_MinionHPBar").GetValue<Circle>().Color);
@@ -229,16 +262,18 @@ namespace GagongSyndra
                     }
                     if (Menu.Item("orb_Draw_Lasthit").GetValue<Circle>().Active &&
                         minion.Health <= MyHero.GetAutoAttackDamage(minion, true))
-                        Utility.DrawCircle(minion.Position, minion.BoundingRadius, Menu.Item("orb_Draw_Lasthit").GetValue<Circle>().Color);
+                        Render.Circle.DrawCircle(minion.Position, minion.BoundingRadius, Menu.Item("orb_Draw_Lasthit").GetValue<Circle>().Color);
                     else if (Menu.Item("orb_Draw_nearKill").GetValue<Circle>().Active &&
                              minion.Health <= MyHero.GetAutoAttackDamage(minion, true) * 2)
-                        Utility.DrawCircle(minion.Position, minion.BoundingRadius, Menu.Item("orb_Draw_nearKill").GetValue<Circle>().Color);
+                        Render.Circle.DrawCircle(minion.Position, minion.BoundingRadius, Menu.Item("orb_Draw_nearKill").GetValue<Circle>().Color);
                 }
             }
         }
 
-        public static void Orbwalk(Vector3 goalPosition, Obj_AI_Base target)
+        public static void Orbwalk(Vector3 goalPosition, AttackableUnit mytarget)
         {
+            var target = (Obj_AI_Base)mytarget;
+
             if (target != null && (CanAttack() || HaveCancled()) && IsAllowedToAttack())
             {
                 _disableNextAttack = false;
@@ -260,15 +295,23 @@ namespace GagongSyndra
                 _movementPrediction.Delay = MyHero.BasicAttack.SpellCastTime;
                 _movementPrediction.Speed = MyHero.BasicAttack.MissileSpeed;
                 MoveTo(_movementPrediction.GetPrediction(target).UnitPosition);
+                R.LastCastAttemptT = 0;
             }
             else
                 MoveTo(goalPosition);
+
+            R.LastCastAttemptT = 0;
         }
 
 
         private static void MoveTo(Vector3 position)
         {
             var delay = Menu.Item("orb_Misc_Humanizer").GetValue<Slider>().Value;
+
+            if ((MyHero.ChampionName == "Katarina" || MyHero.ChampionName == "Velkoz") && delay < 400 && (R.IsReady() || MyHero.Spellbook.GetSpell(SpellSlot.R).State == SpellState.Surpressed) && MyHero.CountEnemysInRange(1000) > 0)
+            {
+                delay = 400;
+            }
             if (Environment.TickCount - _lastMovement < delay)
                 return;
             _lastMovement = Environment.TickCount;
@@ -283,7 +326,6 @@ namespace GagongSyndra
             var point = MyHero.ServerPosition +
             300 * (position.To2D() - MyHero.ServerPosition.To2D()).Normalized().To3D();
             MyHero.IssueOrder(GameObjectOrder.MoveTo, point);
-
 
         }
 
@@ -322,8 +364,17 @@ namespace GagongSyndra
 
         }
 
+        public static Spell R = new Spell(SpellSlot.R);
         private static void OnProcessSpell(Obj_AI_Base unit, GameObjectProcessSpellCastEventArgs spell)
         {
+
+            SpellSlot castedSlot = MyHero.GetSpellSlot(spell.SData.Name);
+
+            if (castedSlot == SpellSlot.R && MyHero.ChampionName == "Katarina")
+            {
+                R.LastCastAttemptT = Environment.TickCount;
+            }
+
             if (IsAutoAttackReset(spell.SData.Name) && unit.IsMe)
                 Utility.DelayAction.Add(100, ResetAutoAttackTimer);
 
@@ -333,10 +384,10 @@ namespace GagongSyndra
             {
                 _lastAATick = Environment.TickCount - Game.Ping / 2; // need test todo
                 // ReSharper disable once CanBeReplacedWithTryCastAndCheckForNull
-                if (spell.Target is Obj_AI_Base)
+                if (spell.Target is AttackableUnit)
                 {
-                    FireOnTargetSwitch((Obj_AI_Base)spell.Target);
-                    _lastTarget = (Obj_AI_Base)spell.Target;
+                    FireOnTargetSwitch((AttackableUnit)spell.Target);
+                    _lastTarget = (AttackableUnit)spell.Target;
                 }
                 if (unit.IsMelee())
                     Utility.DelayAction.Add(
@@ -346,31 +397,27 @@ namespace GagongSyndra
             }
             else
             {
-                FireOnAttack(unit, (Obj_AI_Base)spell.Target);
+                FireOnAttack(unit, (AttackableUnit)spell.Target);
             }
         }
 
-        public static double GetAzirAASandwarriorDamage(Obj_AI_Base unit)
+        public static double GetAzirAaSandwarriorDamage(AttackableUnit target)
         {
+            var unit = (Obj_AI_Base)target;
             var damagelist = new List<int> { 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 110, 120, 130, 140, 150, 160, 170 };
-            var dmg = damagelist[MyHero.Level - 1] + (MyHero.BaseAbilityDamage * 0.7);
-            if (
-                ObjectManager.Get<Obj_AI_Minion>()
-                    .Count(
-                        obj =>
-                            obj.Name == "AzirSoldier" && obj.IsAlly && obj.BoundingRadius < 66 && obj.AttackSpeedMod > 1 &&
-                            obj.Distance(unit) < 350) == 2)
+            var dmg = damagelist[MyHero.Level - 1] + (MyHero.BaseAbilityDamage * 0.6);
+            if (Soilders.Count(obj => obj.Position.Distance(unit.Position) < 390) == 2)
                 return MyHero.CalcDamage(unit, Damage.DamageType.Magical, dmg) +
                        (MyHero.CalcDamage(unit, Damage.DamageType.Magical, dmg) * 0.25);
             return MyHero.CalcDamage(unit, Damage.DamageType.Magical, dmg);
         }
 
-        public static bool InSoldierAttackRange(Obj_AI_Base target)
+        public static bool InSoldierAttackRange(AttackableUnit target)
         {
-            return target != null && ObjectManager.Get<Obj_AI_Minion>().Any(obj => obj.Name == "AzirSoldier" && obj.IsAlly && obj.BoundingRadius < 66 && obj.AttackSpeedMod > 1 && obj.Distance(target) < 380);
+            return target != null && Soilders.Count(obj => obj.Position.Distance(target.Position) < 390) > 0;
         }
 
-        public static Obj_AI_Base GetPossibleTarget()
+        public static AttackableUnit GetPossibleTarget()
         {
             if (ForcedTarget != null)
             {
@@ -380,7 +427,7 @@ namespace GagongSyndra
             }
 
 
-            Obj_AI_Base tempTarget = null;
+            AttackableUnit tempTarget = null;
 
             if (Menu.Item("orb_Misc_Priority_Unit").GetValue<StringList>().SelectedIndex == 1 &&
                 (CurrentMode == Mode.Harass || CurrentMode == Mode.LaneClear))
@@ -390,20 +437,18 @@ namespace GagongSyndra
                     return tempTarget;
             }
 
+            //last hit
             if (CurrentMode == Mode.Harass || CurrentMode == Mode.Lasthit || CurrentMode == Mode.LaneClear || CurrentMode == Mode.LaneFreeze)
             {
-                if (MyHero.ChampionName == "Azir")
+                if (MyHero.ChampionName == "Azir" && Soilders.Count > 0)
                 {
-                    foreach (
-                    var minion in
-                        from minion in
-                            ObjectManager.Get<Obj_AI_Minion>().Where(minion => minion.IsValidTarget() && minion.Name != "Beacon" && InSoldierAttackRange(minion))
-                        let t = (int)(MyHero.AttackCastDelay * 1000) - 100 + Game.Ping / 2 +
-                                1000 * (int)MyHero.Distance(minion) / (int)MyProjectileSpeed()
-                        let predHealth = HealthPrediction.GetHealthPrediction(minion, t, FarmDelay(-125))
-                        where minion.Team != GameObjectTeam.Neutral && predHealth > 0 &&
-                              predHealth <= GetAzirAASandwarriorDamage(minion)
-                        select minion)
+                    var minions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 800, MinionTypes.All, MinionTeam.NotAlly);
+                    foreach (var minion in from minion in minions.Where(minion => minion.IsValidTarget() && minion.Name != "Beacon" && InSoldierAttackRange(minion))
+                                           let t = (int)(MyHero.AttackCastDelay * 1000) - 100 + Game.Ping / 2 + 1000 * (int)MyHero.Distance(minion) / (int)MyProjectileSpeed()
+                                           let predHealth = HealthPrediction.GetHealthPrediction(minion, t, FarmDelay())
+                                           where minion.Team != GameObjectTeam.Neutral && predHealth > 0 &&
+                                                 predHealth <= GetAzirAaSandwarriorDamage(minion)
+                                           select minion)
                         return minion;
                 }
 
@@ -436,17 +481,19 @@ namespace GagongSyndra
                     return turret;
             }
 
+            //jungle
             float[] maxhealth;
             if (CurrentMode == Mode.LaneClear || CurrentMode == Mode.Harass || CurrentMode == Mode.LaneFreeze)
             {
-                if (MyHero.ChampionName == "Azir")
+                if (MyHero.ChampionName == "Azir" && Soilders.Count > 0)
                 {
                     maxhealth = new float[] { 0 };
                     var maxhealth1 = maxhealth;
+                    var minions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 800, MinionTypes.All, MinionTeam.Neutral);
                     foreach (
                         var minion in
-                            ObjectManager.Get<Obj_AI_Minion>()
-                                .Where(minion => InSoldierAttackRange(minion) && minion.Name != "Beacon" && minion.IsValidTarget() && minion.Team == GameObjectTeam.Neutral)
+                            minions
+                                .Where(minion => InSoldierAttackRange(minion) && minion.Name != "Beacon" && minion.IsValidTarget())
                                 .Where(minion => minion.MaxHealth >= maxhealth1[0] || Math.Abs(maxhealth1[0] - float.MaxValue) < float.Epsilon))
                     {
                         tempTarget = minion;
@@ -467,21 +514,23 @@ namespace GagongSyndra
                     return tempTarget;
             }
 
+            //LANE CLEAR
             if (CurrentMode != Mode.LaneClear || ShouldWait())
             {
                 //ResetAutoAttackTimer();
                 return null;
             }
 
-            if (MyHero.ChampionName == "Azir")
+            if (MyHero.ChampionName == "Azir" && Soilders.Count > 0)
             {
                 maxhealth = new float[] { 0 };
                 float[] maxhealth1 = maxhealth;
-                foreach (var minion in from minion in ObjectManager.Get<Obj_AI_Minion>()
+                var minions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 800, MinionTypes.All, MinionTeam.NotAlly);
+                foreach (var minion in from minion in minions
                     .Where(minion => minion.IsValidTarget() && minion.Name != "Beacon" && InSoldierAttackRange(minion))
-                                       let predHealth = HealthPrediction.LaneClearHealthPrediction(minion, (int)((MyHero.AttackDelay * 1000) * LaneClearWaitTimeMod), FarmDelay(-125))
+                                       let predHealth = HealthPrediction.LaneClearHealthPrediction(minion, (int)((MyHero.AttackDelay * 1000) * LaneClearWaitTimeMod), FarmDelay())
                                        where predHealth >=
-                                             GetAzirAASandwarriorDamage(minion) + MyHero.GetAutoAttackDamage(minion, true) ||
+                                             GetAzirAaSandwarriorDamage(minion) + MyHero.GetAutoAttackDamage(minion, true) ||
                                              Math.Abs(predHealth - minion.Health) < float.Epsilon
                                        where minion.Health >= maxhealth1[0] || Math.Abs(maxhealth1[0] - float.MaxValue) < float.Epsilon
                                        select minion)
@@ -492,28 +541,41 @@ namespace GagongSyndra
                 if (tempTarget != null)
                     return tempTarget;
             }
-
-            maxhealth = new float[] { 0 };
-            foreach (var minion in from minion in ObjectManager.Get<Obj_AI_Minion>()
-                .Where(minion => minion.IsValidTarget(GetAutoAttackRange(MyHero, minion)) && minion.Name != "Beacon")
-                                   let predHealth = HealthPrediction.LaneClearHealthPrediction(minion, (int)((MyHero.AttackDelay * 1000) * LaneClearWaitTimeMod), FarmDelay())
-                                   where predHealth >=
-                                         2 * MyHero.GetAutoAttackDamage(minion, true) ||
-                                         Math.Abs(predHealth - minion.Health) < float.Epsilon
-                                   where minion.Health >= maxhealth[0] || Math.Abs(maxhealth[0] - float.MaxValue) < float.Epsilon
-                                   select minion)
+            else
             {
-                tempTarget = minion;
-                maxhealth[0] = minion.MaxHealth;
+                maxhealth = new float[] { 0 };
+                foreach (var minion in from minion in ObjectManager.Get<Obj_AI_Minion>()
+                    .Where(minion => minion.IsValidTarget(GetAutoAttackRange(MyHero, minion)) && minion.Name != "Beacon")
+                                       let predHealth = HealthPrediction.LaneClearHealthPrediction(minion, (int)((MyHero.AttackDelay * 1000) * LaneClearWaitTimeMod), FarmDelay())
+                                       where predHealth >=
+                                             2 * MyHero.GetAutoAttackDamage(minion, true) ||
+                                             Math.Abs(predHealth - minion.Health) < float.Epsilon
+                                       where minion.Health >= maxhealth[0] || Math.Abs(maxhealth[0] - float.MaxValue) < float.Epsilon
+                                       select minion)
+                {
+                    tempTarget = minion;
+                    maxhealth[0] = minion.MaxHealth;
+                }
+                if (tempTarget != null)
+                    return tempTarget;
             }
-            if (tempTarget != null)
-                return tempTarget;
 
             return null;
         }
 
         private static bool ShouldWait()
         {
+            if (MyHero.ChampionName == "Azir" && Soilders.Count > 0)
+            {
+                return ObjectManager.Get<Obj_AI_Minion>()
+                    .Any(
+                    minion =>
+                    minion.IsValidTarget() && minion.Team != GameObjectTeam.Neutral &&
+                    InSoldierAttackRange(minion) &&
+                    HealthPrediction.LaneClearHealthPrediction(
+                    minion, (int)((MyHero.AttackDelay * 1000) * LaneClearWaitTimeMod), FarmDelay()) <= GetAzirAaSandwarriorDamage(minion));
+            }
+
             return ObjectManager.Get<Obj_AI_Minion>()
             .Any(
             minion =>
@@ -572,16 +634,14 @@ namespace GagongSyndra
         private static int FarmDelay(int offset = 0)
         {
             var ret = offset;
-            if (MyHero.ChampionName == "Azir")
-                ret += 125;
             return Menu.Item("orb_Misc_Farmdelay").GetValue<Slider>().Value + ret;
         }
 
-        private static Obj_AI_Base GetBestHeroTarget()
+        private static AttackableUnit GetBestHeroTarget()
         {
             Obj_AI_Hero killableEnemy = null;
             var hitsToKill = double.MaxValue;
-            if (MyHero.ChampionName == "Azir")
+            if (MyHero.ChampionName == "Azir" && Soilders.Count > 0)
             {
                 foreach (var enemy in AllEnemys.Where(hero => hero.IsValidTarget() && InSoldierAttackRange(hero)))
                 {
@@ -594,7 +654,7 @@ namespace GagongSyndra
                 if (hitsToKill <= 4)
                     return killableEnemy;
                 Obj_AI_Hero[] mostdmgenemy = { null };
-                foreach (var enemy in AllEnemys.Where(hero => hero.IsValidTarget() && InSoldierAttackRange(hero)).Where(enemy => mostdmgenemy[0] == null || GetAzirAASandwarriorDamage(enemy) > GetAzirAASandwarriorDamage(mostdmgenemy[0])))
+                foreach (var enemy in AllEnemys.Where(hero => hero.IsValidTarget() && InSoldierAttackRange(hero)).Where(enemy => mostdmgenemy[0] == null || GetAzirAaSandwarriorDamage(enemy) > GetAzirAaSandwarriorDamage(mostdmgenemy[0])))
                 {
                     mostdmgenemy[0] = enemy;
                 }
@@ -617,9 +677,9 @@ namespace GagongSyndra
             return enemy.Health / MyHero.GetAutoAttackDamage(enemy);
         }
 
-        public static double CountKillhitsAzirSoldier(Obj_AI_Base enemy)
+        public static double CountKillhitsAzirSoldier(AttackableUnit enemy)
         {
-            return enemy.Health / GetAzirAASandwarriorDamage(enemy);
+            return enemy.Health / GetAzirAaSandwarriorDamage(enemy);
         }
 
         private static void CheckAutoWindUp()
@@ -658,7 +718,7 @@ namespace GagongSyndra
             _drawing = false;
         }
 
-        public static float GetAutoAttackRange(Obj_AI_Base source = null, Obj_AI_Base target = null)
+        public static float GetAutoAttackRange(Obj_AI_Base source = null, AttackableUnit target = null)
         {
             if (source == null)
                 source = MyHero;
@@ -668,7 +728,7 @@ namespace GagongSyndra
             return ret;
         }
 
-        public static bool InAutoAttackRange(Obj_AI_Base target)
+        public static bool InAutoAttackRange(AttackableUnit target)
         {
             if (target == null)
                 return false;
@@ -716,8 +776,8 @@ namespace GagongSyndra
 
         public class BeforeAttackEventArgs
         {
-            public Obj_AI_Base Target;
-            public Obj_AI_Base Unit = ObjectManager.Player;
+            public AttackableUnit Target;
+            public AttackableUnit Unit = ObjectManager.Player;
             private bool _process = true;
             public bool Process
             {
@@ -732,7 +792,7 @@ namespace GagongSyndra
                 }
             }
         }
-        private static void FireBeforeAttack(Obj_AI_Base target)
+        private static void FireBeforeAttack(AttackableUnit target)
         {
             if (BeforeAttack != null)
             {
@@ -747,7 +807,7 @@ namespace GagongSyndra
             }
         }
 
-        private static void FireOnTargetSwitch(Obj_AI_Base newTarget)
+        private static void FireOnTargetSwitch(AttackableUnit newTarget)
         {
             if (OnTargetChange != null && (_lastTarget == null || _lastTarget.NetworkId != newTarget.NetworkId))
             {
@@ -755,7 +815,7 @@ namespace GagongSyndra
             }
         }
 
-        private static void FireAfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
+        private static void FireAfterAttack(AttackableUnit unit, AttackableUnit target)
         {
             if (AfterAttack != null)
             {
@@ -763,7 +823,7 @@ namespace GagongSyndra
             }
         }
 
-        private static void FireOnAttack(Obj_AI_Base unit, Obj_AI_Base target)
+        private static void FireOnAttack(AttackableUnit unit, AttackableUnit target)
         {
             if (OnAttack != null)
             {
