@@ -6,7 +6,7 @@ using System.Linq;
 using SharpDX;
 using Color = System.Drawing.Color;
 
-namespace GagongSyndra
+namespace GagongSyndra //Credits to DZ191 for the updated 
 {
     // ReSharper disable once InconsistentNaming
     public class xSLxOrbwalker
