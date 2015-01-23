@@ -82,7 +82,7 @@ namespace GagongSyndra
             R.SetTargetted(0.5f, 1100f);
 
             QE = new Spell(SpellSlot.E, 1292);
-            QE.SetSkillshot(0.98f, 55f, 9000f, false, SkillshotType.SkillshotLine);
+            QE.SetSkillshot(0.98f, 45f, 9000f, false, SkillshotType.SkillshotLine);
 
 
             IgniteSlot = Player.GetSpellSlot("SummonerDot");
