@@ -1,4 +1,4 @@
-﻿﻿using LeagueSharp;
+using LeagueSharp;
 using LeagueSharp.Common;
 using System;
 using System.Collections.Generic;
@@ -132,7 +132,7 @@ namespace GagongSyndra //Credits to DZ191 for the updated
             menu.AddItem(new MenuItem("xSLx_info2", "Credits: xSLx & Esk0r"));
 
             Drawing.OnDraw += OnDraw;
-            Game.OnGameUpdate += OnUpdate;
+            Game.OnUpdate += OnUpdate;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpell;
             GameObject.OnCreate += Obj_SpellMissile_OnCreate;
             GameObject.OnDelete += OnDelete;
