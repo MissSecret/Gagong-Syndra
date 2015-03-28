@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System;
 using LeagueSharp;
@@ -61,10 +61,10 @@ namespace GagongSyndra
 
         static void Main(string[] args)
         {
-            CustomEvents.Game.OnGameLoad += Game_OnGameLoad;
+            CustomEvents.Game.OnLoad += Game_OnLoad;
         }
 
-        static void Game_OnGameLoad(EventArgs args)
+        static void Game_OnLoad(EventArgs args)
         {
             if (Player.BaseSkinName != ChampName) return;
             
@@ -218,7 +218,7 @@ namespace GagongSyndra
             if (Menu.Item("Sound1").GetValue<bool>()) PlaySound(welcome);
             GameObject.OnCreate += OnCreate;
             GameObject.OnDelete += OnDelete;
-            Game.OnGameUpdate += Game_OnGameUpdate;
+            Game.OnUpdate += Game_OnUpdate;
             Drawing.OnDraw += Drawing_OnDraw;
             Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
             AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
@@ -343,7 +343,7 @@ namespace GagongSyndra
                 LastPlayedSound = Environment.TickCount;
             }
         }
-        static void Game_OnGameUpdate(EventArgs args)
+        static void Game_OnUpdate(EventArgs args)
         {
             if (Player.IsDead) return;
 
