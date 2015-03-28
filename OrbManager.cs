@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using LeagueSharp;
@@ -28,7 +28,7 @@ namespace GagongSyndra
 
         static OrbManager()
         {
-            Game.OnGameProcessPacket += Game_OnGameProcessPacket;
+            Game.OnProcessPacket += Game_OnProcessPacket;
         }
 
         public static Obj_AI_Minion WObject(bool onlyOrb)
@@ -39,7 +39,7 @@ namespace GagongSyndra
             return null;
         }
 
-        private static void Game_OnGameProcessPacket(GamePacketEventArgs args)
+        private static void Game_OnProcessPacket(GamePacketEventArgs args)
         {
             if (args.PacketData[0] == 0x71)
             {
