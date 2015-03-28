@@ -61,7 +61,7 @@ namespace GagongSyndra
 
         static void Main(string[] args)
         {
-            CustomEvents.Game.OnLoad += Game_OnLoad;
+            CustomEvents.Game.OnGameLoad += Game_OnLoad;
         }
 
         static void Game_OnLoad(EventArgs args)
